@@ -1,5 +1,5 @@
 <h1 align="center">Hi 👋, I'm Abhijeet Singh</h1>
-<h3 align="center">Data & Platform Engineer | Working with Dagster, dbt, Snowflake & more</h3>
+<h3 align="center"> Software Engineer | Working with Dagster, dbt, Snowflake & more</h3>
 
 ---
 
