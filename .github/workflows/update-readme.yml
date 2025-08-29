@@ -18,12 +18,15 @@ jobs:
           curl -o langs.svg "https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true"
 
       - name: Commit & Push
+        env:
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
         run: |
           git config user.name "Abhijeet Singh"
-          git config user.email "abhijeetsingh03022003@gmail.com"
+          git config user.email "abhijeetsingh1801@users.noreply.github.com"
           git add stats.svg langs.svg
           git commit -m "chore: update stats" || echo "No changes to commit"
-          git remote set-url origin https://AbhijeetSingh1801:${{ secrets.GH_STAT }}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
+          git remote set-url origin https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
           git push origin HEAD:master
+
 
 
