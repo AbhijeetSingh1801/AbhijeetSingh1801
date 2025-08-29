@@ -1,0 +1,30 @@
+name: Test PAT Push
+
+on:
+  workflow_dispatch:  # run manually
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create test file
+        run: echo "Test run at $(date)" > test.txt
+
+      - name: Commit changes
+        run: |
+          git config user.name "Abhijeet Singh"
+          git config user.email "abhijeetsingh1801@users.noreply.github.com"
+          git add test.txt
+          git commit -m "test: push workflow"
+
+      - name: Set remote with PAT
+        run: git remote set-url origin https://AbhijeetSingh1801:${{ secrets.GH_STAT }}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
+
+      - name: Debug remote
+        run: git remote -v
+
+      - name: Push changes
+        run: git push origin HEAD:master
