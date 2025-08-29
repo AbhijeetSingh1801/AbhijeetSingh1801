@@ -1,4 +1,4 @@
-name: Debug PAT Push
+name: Ensure Contribution Push
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  debug:
+  ensure-contrib:
     runs-on: ubuntu-latest
     env:
       PAT_TOKEN: ${{ secrets.GH_STAT }}
@@ -15,54 +15,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Show remote before change
+      - name: Generate/Update files
         run: |
-          echo "=== remote -v BEFORE set-url ==="
-          git remote -v || true
+          # replace these with your actual stat-generation steps
+          curl -o stats.svg "https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true"
+          curl -o langs.svg "https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true"
 
-      - name: Set remote to use PAT (masked in logs)
+      - name: Set git author to your noreply (ensures GitHub attribution)
+        run: |
+          git config user.name "Abhijeet Singh"
+          git config user.email "abhijeetsingh1801@users.noreply.github.com"
+
+      - name: Commit changes
+        run: |
+          git add stats.svg langs.svg
+          git commit -m "chore: update stats (workflow)" || echo "No changes to commit"
+
+      - name: Show last commit author
+        run: git log -1 --pretty=format:'Last commit: %h %an <%ae> %ad' || true
+
+      - name: Set remote to use PAT (masked)
         run: |
           git remote set-url origin https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
-          echo "set-url done"
 
-      - name: Show remote after change
+      - name: Disable credential helper and push (embedded token)
         run: |
-          echo "=== remote -v AFTER set-url ==="
-          git remote -v || true
+          git -c credential.helper= push https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git HEAD:master || true
 
-      - name: Verify PAT via API (shows which user the PAT belongs to)
+      - name: Confirm PAT owner via API
         run: |
-          echo "Calling GitHub API to check token owner..."
-          status=$(curl -s -o /tmp/user.json -w "%{http_code}" -H "Authorization: token ${PAT_TOKEN}" https://api.github.com/user || true)
-          echo "HTTP status: $status"
-          echo "API response (masked PAT will not be shown):"
-          # print only login and id to keep logs concise
-          jq -r '.login, .id' /tmp/user.json || cat /tmp/user.json || true
-
-      - name: Attempt push (embedded token - disable credential helper)
-        run: |
-          echo "Attempting push with embedded token and disabled credential helper..."
-          # ensure we have a commit to push
-          echo "debug $(date)" > debug.txt
-          git add debug.txt
-          git commit -m "debug: test PAT push" || echo "No changes to commit"
-          # disable credential helper to avoid runner caching interfering
-          git -c credential.helper= push https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git HEAD:master || echo "push-with-embedded-token failed (see message above)"
-
-      - name: Attempt push (GIT_ASKPASS fallback)
-        run: |
-          echo "Attempting push using GIT_ASKPASS fallback..."
-          cat > ./askpass.sh <<'EOF'
-          #!/bin/sh
-          # Git will request a password and this script will provide the PAT
-          echo "${PAT_TOKEN}"
-          EOF
-          chmod +x ./askpass.sh
-          export GIT_ASKPASS="$(pwd)/askpass.sh"
-          # disable credential helper explicitly
-          git -c credential.helper= push origin HEAD:master || echo "push-with-askpass failed (see message above)"
-
-      - name: Final status check
-        run: |
-          echo "If API returned your login (e.g. AbhijeetSingh1801) the PAT is valid and belongs to that user."
-          echo "If the 'Attempt push' steps failed but API shows valid login, check branch protection rules, repository permissions, and token scopes (must include 'repo' for classic PAT)."
+          echo "Checking PAT owner..."
+          curl -s -H "Authorization: token ${PAT_TOKEN}" https://api.github.com/user | jq -r '.login, .id'
