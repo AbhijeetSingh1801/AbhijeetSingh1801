@@ -20,10 +20,10 @@ jobs:
       - name: Install requests
         run: pip install requests
 
-      - name: Generate SVG
+      - name: Generate stats
+        run: python generate_stats.py
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: python generate_stats.py
 
       - name: Commit & Push
         run: |
