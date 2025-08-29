@@ -17,11 +17,11 @@ jobs:
 
       - name: Generate/Update files
         run: |
-          # replace these with your actual stat-generation steps
-          curl -o stats.svg "https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true"
-          curl -o langs.svg "https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true"
+          # replace with your real generation commands if you want
+          curl -s -o stats.svg "https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true"
+          curl -s -o langs.svg "https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true"
 
-      - name: Set git author to your noreply (ensures GitHub attribution)
+      - name: Set git author to your noreply
         run: |
           git config user.name "Abhijeet Singh"
           git config user.email "abhijeetsingh1801@users.noreply.github.com"
@@ -32,17 +32,26 @@ jobs:
           git commit -m "chore: update stats (workflow)" || echo "No changes to commit"
 
       - name: Show last commit author
-        run: git log -1 --pretty=format:'Last commit: %h %an <%ae> %ad' || true
+        run: |
+          git log -1 --pretty=format:'Last commit: %h %an <%ae> %ad' || true
 
-      - name: Set remote to use PAT (masked)
+      - name: Set remote to use PAT
         run: |
           git remote set-url origin https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
+          git remote -v
 
-      - name: Disable credential helper and push (embedded token)
+      - name: Push using GIT_ASKPASS (avoids credential helper issues)
         run: |
-          git -c credential.helper= push https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git HEAD:master || true
+          cat > askpass.sh <<'EOF'
+          #!/bin/sh
+          echo "${PAT_TOKEN}"
+          EOF
+          chmod +x askpass.sh
+          export GIT_ASKPASS="$(pwd)/askpass.sh"
+          # disable credential helpers to avoid cached creds
+          git -c credential.helper= push origin HEAD:master || true
 
-      - name: Confirm PAT owner via API
+      - name: Check PAT owner via API
         run: |
-          echo "Checking PAT owner..."
-          curl -s -H "Authorization: token ${PAT_TOKEN}" https://api.github.com/user | jq -r '.login, .id'
+          echo "Checking PAT owner (login):"
+          curl -s -H "Authorization: token ${PAT_TOKEN}" https://api.github.com/user | grep -o '"login":[[:space:]]*"[^"]*"' || true
