@@ -45,16 +45,13 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GH_STAT_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           branch: update-stats-branch
-          base: master   # <--- important, must be different
+          branch-suffix: short-commit-hash   # ensures unique branch if base is same
+          base: master
           title: update stats (auto)
           body: This PR updates the contribution stats SVG automatically.
           commit-message: update stats (auto)
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: AbhijeetSingh1801 <220677831+AbhijeetSingh1801@users.noreply.github.com>
-          signoff: false
           delete-branch: false
-          sign-commits: false
-          draft: false
-          maintainer-can-modify: true
