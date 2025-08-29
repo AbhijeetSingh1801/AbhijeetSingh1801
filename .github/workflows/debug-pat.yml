@@ -1,0 +1,68 @@
+name: Debug PAT Push
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    env:
+      PAT_TOKEN: ${{ secrets.GH_STAT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Show remote before change
+        run: |
+          echo "=== remote -v BEFORE set-url ==="
+          git remote -v || true
+
+      - name: Set remote to use PAT (masked in logs)
+        run: |
+          git remote set-url origin https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
+          echo "set-url done"
+
+      - name: Show remote after change
+        run: |
+          echo "=== remote -v AFTER set-url ==="
+          git remote -v || true
+
+      - name: Verify PAT via API (shows which user the PAT belongs to)
+        run: |
+          echo "Calling GitHub API to check token owner..."
+          status=$(curl -s -o /tmp/user.json -w "%{http_code}" -H "Authorization: token ${PAT_TOKEN}" https://api.github.com/user || true)
+          echo "HTTP status: $status"
+          echo "API response (masked PAT will not be shown):"
+          # print only login and id to keep logs concise
+          jq -r '.login, .id' /tmp/user.json || cat /tmp/user.json || true
+
+      - name: Attempt push (embedded token - disable credential helper)
+        run: |
+          echo "Attempting push with embedded token and disabled credential helper..."
+          # ensure we have a commit to push
+          echo "debug $(date)" > debug.txt
+          git add debug.txt
+          git commit -m "debug: test PAT push" || echo "No changes to commit"
+          # disable credential helper to avoid runner caching interfering
+          git -c credential.helper= push https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git HEAD:master || echo "push-with-embedded-token failed (see message above)"
+
+      - name: Attempt push (GIT_ASKPASS fallback)
+        run: |
+          echo "Attempting push using GIT_ASKPASS fallback..."
+          cat > ./askpass.sh <<'EOF'
+          #!/bin/sh
+          # Git will request a password and this script will provide the PAT
+          echo "${PAT_TOKEN}"
+          EOF
+          chmod +x ./askpass.sh
+          export GIT_ASKPASS="$(pwd)/askpass.sh"
+          # disable credential helper explicitly
+          git -c credential.helper= push origin HEAD:master || echo "push-with-askpass failed (see message above)"
+
+      - name: Final status check
+        run: |
+          echo "If API returned your login (e.g. AbhijeetSingh1801) the PAT is valid and belongs to that user."
+          echo "If the 'Attempt push' steps failed but API shows valid login, check branch protection rules, repository permissions, and token scopes (must include 'repo' for classic PAT)."
