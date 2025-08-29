@@ -1,9 +1,9 @@
-name: Update README with Private Stats
+name: Update README Stats
 
 on:
   schedule:
-    - cron: "0 */12 * * *"   # runs every 12 hours
-  workflow_dispatch:         # allow manual trigger
+    - cron: "0 */12 * * *"   # every 12 hours
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,12 +12,16 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Generate GitHub Stats
-        uses: anuraghazra/github-readme-stats@master
-        with:
-          USERNAME: AbhijeetSingh1801
-          SHOW_ICONS: true
-          THEME: radical
-          COUNT_PRIVATE: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_STATS_TOKEN }}
+      - name: Update README.md
+        run: |
+          sed -i 's|https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801.*|https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801\&show_icons=true\&theme=radical\&count_private=true\&token=${{ secrets.GH_STATS_TOKEN }}|' README.md
+
+          sed -i 's|https://github-readme-stats.vercel.app/api/top-langs.*|https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801\&layout=compact\&theme=radical\&count_private=true\&token=${{ secrets.GH_STATS_TOKEN }}|' README.md
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add README.md
+          git commit -m "chore: update stats with private repos" || echo "No changes"
+          git push
