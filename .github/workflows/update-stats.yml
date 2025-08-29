@@ -45,7 +45,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ secrets.GH_STAT_TOKEN }}
           branch: update-stats-branch-${{ github.run_id }}  # unique branch every run
           base: master
           title: update stats (auto)
