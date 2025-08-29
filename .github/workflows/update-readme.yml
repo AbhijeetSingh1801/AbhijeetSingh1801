@@ -1,29 +1,30 @@
-name: Update README Stats
+name: Update Readme Stats
 
 on:
   schedule:
-    - cron: "0 */12 * * *" # every 12 hours
+    - cron: "0 */12 * * *"   # update every 12h
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Update README.md
+      - uses: actions/checkout@v3
+      
+      - name: Generate Stats
         run: |
-          sed -i 's|https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801.*|https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801\&show_icons=true\&theme=radical\&count_private=true\&token=${{ secrets.GH_STATS_TOKEN }}|' README.md
-          sed -i 's|https://github-readme-stats.vercel.app/api/top-langs.*|https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801\&layout=compact\&theme=radical\&count_private=true\&token=${{ secrets.GH_STATS_TOKEN }}|' README.md
+          curl -H "Authorization: token ${{ secrets.PAT_1 }}" \
+            "https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true" \
+            -o stats.svg
+          
+          curl -H "Authorization: token ${{ secrets.PAT_1 }}" \
+            "https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true" \
+            -o langs.svg
 
-      - name: Commit changes
+      - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git commit -m "chore: update stats with private repos" || echo "No changes"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:master
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stats.svg langs.svg
+          git commit -m "chore: update stats"
+          git push
