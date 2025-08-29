@@ -22,5 +22,5 @@
 
 ### 📈 GitHub Stats
 
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true&token=${{ secrets.GH_STATS_TOKEN }})
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true&token=${{ secrets.GH_STATS_TOKEN }})
+![GitHub Stats](https://github-readme-stats.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true)
+![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=AbhijeetSingh1801&layout=compact&theme=radical&count_private=true})
