@@ -47,7 +47,7 @@ jobs:
         with:
           token: ${{ secrets.GH_STAT_TOKEN }}
           branch: update-stats-branch
-          branch-suffix: short-commit-hash   # ensures unique branch if base is same
+          branch-suffix: timestamp
           base: master
           title: update stats (auto)
           body: This PR updates the contribution stats SVG automatically.
