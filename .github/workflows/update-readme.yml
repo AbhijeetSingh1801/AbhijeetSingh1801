@@ -20,7 +20,7 @@ jobs:
       - name: Commit & Push
         run: |
           git config user.name "Abhijeet Singh"
-          git config user.email "abhijeetsingh1801@users.noreply.github.com"
+          git config user.email "abhijeetsingh03022003@gmail.com"
           git add stats.svg langs.svg
           git commit -m "chore: update stats" || echo "No changes to commit"
           git remote set-url origin https://AbhijeetSingh1801:${{ secrets.GH_STAT }}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
