@@ -21,5 +21,5 @@
 ---
 
 ### 📈 GitHub Stats
-![GitHub Stats](https://your-vercel-app.vercel.app/api?username=AbhijeetSingh1801&show_icons=true&theme=radical&count_private=true)
-
+![GitHub Stats](./stats.svg)
+![Top Langs](./langs.svg)
