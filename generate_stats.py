@@ -1,7 +1,7 @@
 import requests
 import os
 import sys
-
+from datetime import datetime
 token = os.getenv("PAT_TOKEN")
 if not token:
     print("Missing PAT_TOKEN env var", file=sys.stderr)
@@ -40,3 +40,10 @@ except KeyError:
     sys.exit(1)
 
 print("Total contributions:", total)
+
+
+
+# Always update a text file with the last run timestamp
+with open("last_run.txt", "a") as f:
+    f.write(f"Last run: {datetime.utcnow().isoformat()}Z\n")
+
