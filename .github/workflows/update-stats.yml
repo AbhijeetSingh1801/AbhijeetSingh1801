@@ -33,4 +33,4 @@ jobs:
           git commit -m "chore: update stats (auto)" || echo "No changes"
           git push origin HEAD:master
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
