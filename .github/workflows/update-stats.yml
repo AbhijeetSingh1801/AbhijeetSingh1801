@@ -2,56 +2,62 @@ name: Update Stats
 
 on:
   schedule:
-    - cron: "0 0 * * *" # Runs daily at midnight
-  workflow_dispatch:     # Allow manual runs
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:      # Allows manual trigger
 
 jobs:
   update-stats:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Fetch all branches
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.13'
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Generate stats
-        run: python generate_stats.py
-        env:
-          PAT_TOKEN: ${{ secrets.GH_STAT }}
+      - name: Generate Stats SVG
+        run: python generate_stats_svg.py  # Replace with your script
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create PR branch
+        id: pr_branch
+        run: |
+          BRANCH_NAME="update-stats-branch-$(date +%s)"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
+          git checkout -b $BRANCH_NAME
 
       - name: Commit changes
         run: |
-          git config user.name "Abhijeet Singh"
-          git config user.email "abhijeetsingh03022003@gmail.com"
-          git checkout -b update-stats-branch
-          git add .
-          git commit -m "chore: update stats (auto)" || echo "No changes"
-      - name: Debug secret
-        run: |
-          if [ -z "${{ secrets.GH_STAT_TOKEN }}" ]; then
-            echo "PAT_TOKEN is missing!"
-            exit 1
-          else
-            echo "PAT_TOKEN is set (hidden)."
-          fi
+          git add langs.svg stats.svg
+          git commit -m "update stats (auto)" || echo "No changes to commit"
+
+      - name: Push branch
+        run: git push origin ${{ env.branch }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GH_STAT_TOKEN }}
-          branch: update-stats-branch-${{ github.run_id }}  # unique branch every run
+          token: ${{ secrets.PAT_TOKEN }}
+          branch: ${{ env.branch }}
           base: master
-          title: update stats (auto)
-          body: This PR updates the contribution stats SVG automatically.
-          commit-message: update stats (auto)
+          title: "update stats (auto)"
+          body: "This PR updates the contribution stats SVG automatically."
+          commit-message: "update stats (auto)"
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: AbhijeetSingh1801 <220677831+AbhijeetSingh1801@users.noreply.github.com>
-          delete-branch: true
-
+          delete-branch: false
+          sign-commits: false
