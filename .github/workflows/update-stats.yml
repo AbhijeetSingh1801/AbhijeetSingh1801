@@ -23,7 +23,7 @@ jobs:
       - name: Generate stats
         run: python generate_stats.py
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
 
       - name: Commit & Push
         run: |
