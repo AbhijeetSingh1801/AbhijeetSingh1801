@@ -1,13 +1,15 @@
 import requests
 import os
+import sys
 
-username = "AbhijeetSingh1801"
-token = os.environ.get("PAT_TOKEN")
+token = os.getenv("PAT_TOKEN")
+if not token:
+    print("Missing PAT_TOKEN env var", file=sys.stderr)
+    sys.exit(1)
 
-# Fetch contributions (GraphQL API)
 query = """
 {
-  user(login: "%s") {
+  user(login: "AbhijeetSingh1801") {
     contributionsCollection {
       contributionCalendar {
         totalContributions
@@ -15,24 +17,26 @@ query = """
     }
   }
 }
-""" % username
+"""
 
+headers = {"Authorization": f"Bearer {token}"}
 response = requests.post(
     "https://api.github.com/graphql",
     json={"query": query},
-    headers={"Authorization": f"bearer {token}"}
+    headers=headers,
 )
 
-data = response.json()
-total = data["data"]["user"]["contributionsCollection"]["contributionCalendar"]["totalContributions"]
+result = response.json()
+print("DEBUG:", result)  # 👈 add this
 
-# Write a very simple SVG
-svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80">
-  <rect width="100%" height="100%" fill="white"/>
-  <text x="10" y="40" font-size="20" fill="black">
-    Contributions: {total}
-  </text>
-</svg>"""
+if "errors" in result:
+    print("GraphQL returned errors:", result["errors"], file=sys.stderr)
+    sys.exit(1)
 
-with open("stats.svg", "w") as f:
-    f.write(svg)
+try:
+    total = result["data"]["user"]["contributionsCollection"]["contributionCalendar"]["totalContributions"]
+except KeyError:
+    print("Unexpected response format", result, file=sys.stderr)
+    sys.exit(1)
+
+print("Total contributions:", total)
