@@ -1,0 +1,192 @@
+name: Generate Simple README Stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */12 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-push:
+    runs-on: ubuntu-latest
+    env:
+      PAT_TOKEN: ${{ secrets.GH_STAT }}   # classic PAT with repo scope
+      GH_USERNAME: AbhijeetSingh1801
+    steps:
+      - name: Checkout (no GITHUB_TOKEN)
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Create generator script
+        run: |
+          mkdir -p .github/scripts
+          cat > .github/scripts/generate_stats.js <<'NODE'
+          // generate_stats.js
+          // Node 18+ (uses global fetch)
+          const fs = require('fs/promises');
+
+          const token = process.env.PAT_TOKEN;
+          const username = process.env.GH_USERNAME || process.env.GITHUB_ACTOR;
+
+          if (!token) {
+            console.error('PAT_TOKEN missing in env');
+            process.exit(2);
+          }
+
+          const headers = {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github+json'
+          };
+
+          async function fetchAllRepos() {
+            let repos = [];
+            let page = 1;
+            while (true) {
+              const url = `https://api.github.com/user/repos?per_page=100&page=${page}&sort=full_name`;
+              const res = await fetch(url, { headers });
+              if (!res.ok) throw new Error(`Failed to fetch repos: ${res.status} ${res.statusText}`);
+              const data = await res.json();
+              if (!Array.isArray(data) || data.length === 0) break;
+              repos = repos.concat(data);
+              if (data.length < 100) break;
+              page++;
+            }
+            return repos;
+          }
+
+          async function fetchLanguages(url) {
+            const res = await fetch(url, { headers });
+            if (!res.ok) {
+              console.warn('Language fetch failed', url, res.status);
+              return {};
+            }
+            return await res.json();
+          }
+
+          function generateStatsSVG({ totalRepos, privateRepos, totalStars, totalForks }) {
+            const w = 700, h = 120;
+            return `<?xml version="1.0" encoding="utf-8"?>
+<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font: 700 16px "Segoe UI", Roboto, Arial; fill: #2f80ed; }
+    .k { font: 600 14px "Segoe UI", Roboto, Arial; fill: #111827; }
+    .v { font: 500 14px "Segoe UI", Roboto, Arial; fill: #0f172a; }
+    .box { fill: #f8fafc; stroke: #e6eefc; stroke-width: 1; rx:10; ry:10; }
+  </style>
+  <rect class="box" x="8" y="8" width="${w-16}" height="${h-16}" />
+  <text x="28" y="36" class="title">AbhijeetSingh1801 • Quick stats</text>
+  <text x="28" y="64" class="k">Repositories:</text><text x="200" y="64" class="v">${totalRepos}</text>
+  <text x="28" y="86" class="k">Private repos:</text><text x="200" y="86" class="v">${privateRepos}</text>
+  <text x="340" y="64" class="k">Total stars:</text><text x="470" y="64" class="v">${totalStars}</text>
+  <text x="340" y="86" class="k">Total forks:</text><text x="470" y="86" class="v">${totalForks}</text>
+</svg>`;
+          }
+
+          function generateLangsSVG(langEntries) {
+            const w = 700;
+            const rowH = 28;
+            const h = Math.max(80, 40 + rowH * langEntries.length);
+            const total = langEntries.reduce((s,[l,b])=>s+b,0) || 1;
+            let rows = '';
+            let y = 40;
+            for (const [lang, bytes] of langEntries) {
+              const pct = Math.round((bytes/total)*100);
+              rows += `<text x="28" y="${y}" font-size="13" font-weight="600" fill="#0f172a">${lang}</text>
+  <text x="200" y="${y}" font-size="13" fill="#374151">${pct}%</text>\n`;
+              y += rowH;
+            }
+            return `<?xml version="1.0" encoding="utf-8"?>
+<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .title { font: 700 16px "Segoe UI", Roboto, Arial; fill: #10b981; }
+  </style>
+  <rect x="8" y="8" width="${w-16}" height="${h-16}" fill="#fff" stroke="#e6eefc" rx="10" ry="10" />
+  <text x="28" y="28" class="title">Top languages</text>
+  ${rows}
+</svg>`;
+          }
+
+          (async () => {
+            try {
+              console.log('Fetching repos for user:', username);
+              const repos = await fetchAllRepos();
+              console.log('Fetched repos count:', repos.length);
+
+              let totalStars = 0, totalForks = 0, privateCount = 0;
+              const langAgg = {};
+
+              for (const r of repos) {
+                totalStars += r.stargazers_count || 0;
+                totalForks += r.forks_count || 0;
+                if (r.private) privateCount++;
+              }
+
+              // Fetch languages for each repo (serial to be gentle on rate limits)
+              for (const r of repos) {
+                try {
+                  const langs = await fetchLanguages(r.languages_url);
+                  for (const [k, v] of Object.entries(langs || {})) {
+                    langAgg[k] = (langAgg[k] || 0) + (v || 0);
+                  }
+                } catch (err) {
+                  console.warn('Language fetch error', r.full_name, err.message);
+                }
+              }
+
+              // Sort languages by bytes
+              const langEntries = Object.entries(langAgg).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+              const statsSvg = generateStatsSVG({
+                totalRepos: repos.length,
+                privateRepos: privateCount,
+                totalStars,
+                totalForks
+              });
+              const langsSvg = generateLangsSVG(langEntries);
+
+              await fs.writeFile('stats.svg', statsSvg, 'utf8');
+              await fs.writeFile('langs.svg', langsSvg, 'utf8');
+
+              console.log('Wrote stats.svg and langs.svg');
+              process.exit(0);
+            } catch (err) {
+              console.error('Fatal error generating stats:', err);
+              process.exit(3);
+            }
+          })();
+          NODE
+
+      - name: Run generator
+        env:
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
+          GH_USERNAME: ${{ env.GH_USERNAME }}
+        run: |
+          node .github/scripts/generate_stats.js
+          echo "Preview files:"
+          ls -lh stats.svg langs.svg || true
+          sed -n '1,5p' stats.svg || true
+          sed -n '1,8p' langs.svg || true
+
+      - name: Commit & push
+        env:
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
+          GH_USERNAME: ${{ env.GH_USERNAME }}
+        run: |
+          git config user.name "Abhijeet Singh"
+          git config user.email "abhijeetsingh1801@users.noreply.github.com"
+          git add stats.svg langs.svg
+          git commit -m "chore: update simple stats (workflow)" || echo "No changes to commit"
+          git remote set-url origin https://$GH_USERNAME:${PAT_TOKEN}@github.com/$GH_USERNAME/$GH_USERNAME.git
+          git -c credential.helper= push origin HEAD:master || true
+
+      - name: Done
+        run: echo "Done. Check commit on https://github.com/${GH_USERNAME}/${GH_USERNAME}/commits/master"
