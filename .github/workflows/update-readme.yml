@@ -23,4 +23,5 @@ jobs:
           git config user.email "abhijeetsingh1801@users.noreply.github.com"
           git add stats.svg langs.svg
           git commit -m "chore: update stats" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.GH_STATS_TOKEN }}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git HEAD:master
+          git remote set-url origin https://AbhijeetSingh1801:${{ secrets.GH_STATS_TOKEN }}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
+          git push origin HEAD:master
