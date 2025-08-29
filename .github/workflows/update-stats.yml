@@ -29,8 +29,10 @@ jobs:
         run: |
           git config user.name "Abhijeet Singh"
           git config user.email "abhijeetsingh1801@users.noreply.github.com"
+          git remote set-url origin https://AbhijeetSingh1801:${PAT_TOKEN}@github.com/AbhijeetSingh1801/AbhijeetSingh1801.git
           git add stats.svg
           git commit -m "chore: update stats (auto)" || echo "No changes"
           git push origin HEAD:master
         env:
           PAT_TOKEN: ${{ secrets.GH_STAT }}
+
