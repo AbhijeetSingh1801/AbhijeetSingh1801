@@ -40,9 +40,9 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           branch: update-stats-branch
           base: master   # <--- important, must be different
-          title:  update stats (auto)
+          title: update stats (auto)
           body: This PR updates the contribution stats SVG automatically.
-          commit-message:  update stats (auto)
+          commit-message: update stats (auto)
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: AbhijeetSingh1801 <220677831+AbhijeetSingh1801@users.noreply.github.com>
           signoff: false
