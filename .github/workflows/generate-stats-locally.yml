@@ -1,0 +1,93 @@
+name: Generate README Stats Locally
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-push:
+    runs-on: ubuntu-latest
+    env:
+      PAT_TOKEN: ${{ secrets.GH_STAT }}   # must be a classic PAT with 'repo' scope
+      GH_USERNAME: AbhijeetSingh1801       # change if needed
+      PORT: 3000
+    steps:
+      - name: Checkout repo (do not use GITHUB_TOKEN)
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Clone github-readme-stats
+        run: |
+          git clone https://github.com/anuraghazra/github-readme-stats.git /tmp/github-readme-stats
+          ls -la /tmp/github-readme-stats
+
+      - name: Install deps for github-readme-stats
+        working-directory: /tmp/github-readme-stats
+        run: npm ci
+
+      - name: Start local github-readme-stats server (background)
+        working-directory: /tmp/github-readme-stats
+        run: |
+          # export token name the project expects (PAT_1) and other env
+          export PAT_1="${PAT_TOKEN}"
+          export PORT="${PORT}"
+          # start server in background and save pid
+          npm run start &> /tmp/ghrs.log &
+          echo $! > /tmp/ghrs.pid
+          echo "Started server with PID $(cat /tmp/ghrs.pid)"
+          # wait for server to be ready (timeout after ~30s)
+          for i in $(seq 1 30); do
+            if curl -sSf "http://localhost:${PORT}/api?username=${GH_USERNAME}" >/dev/null 2>&1; then
+              echo "server ready"
+              break
+            fi
+            echo "waiting for server..."
+            sleep 1
+          done
+          echo "server logs (tail):"
+          tail -n 50 /tmp/ghrs.log || true
+
+      - name: Generate SVGs from local server
+        run: |
+          # Stats SVG (private count enabled)
+          curl -s -o stats.svg "http://localhost:${PORT}/api?username=${GH_USERNAME}&show_icons=true&theme=radical&count_private=true"
+          # Top languages SVG
+          curl -s -o langs.svg "http://localhost:${PORT}/api/top-langs/?username=${GH_USERNAME}&layout=compact&theme=radical&count_private=true"
+          echo "Saved stats.svg and langs.svg"
+          # show small preview of file sizes
+          ls -lh stats.svg langs.svg || true
+
+      - name: Stop local server
+        run: |
+          if [ -f /tmp/ghrs.pid ]; then
+            kill "$(cat /tmp/ghrs.pid)" || true
+            rm -f /tmp/ghrs.pid
+            echo "server stopped"
+          fi
+
+      - name: Commit & push SVGs (use your PAT)
+        env:
+          PAT_TOKEN: ${{ secrets.GH_STAT }}
+        run: |
+          git config user.name "Abhijeet Singh"
+          git config user.email "abhijeetsingh1801@users.noreply.github.com"
+          git add stats.svg langs.svg
+          git commit -m "chore: update stats (workflow)" || echo "No changes to commit"
+          # set remote to use PAT and push to master (change branch if needed)
+          git remote set-url origin https://$GH_USERNAME:${PAT_TOKEN}@github.com/$GH_USERNAME/$GH_USERNAME.git
+          git -c credential.helper= push origin HEAD:master
+
+      - name: Show commit + done
+        run: |
+          echo "Done — check commit on https://github.com/${GH_USERNAME}/${GH_USERNAME}/commits/master"
